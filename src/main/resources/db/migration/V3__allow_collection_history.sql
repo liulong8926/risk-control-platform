@@ -1,0 +1,1 @@
+ALTER TABLE er_collection_attempt DROP CONSTRAINT uq_active_attempt;

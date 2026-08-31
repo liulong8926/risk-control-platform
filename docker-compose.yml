@@ -1,0 +1,35 @@
+name: enterprise-risk-local
+
+services:
+  enterprise-risk-backend:
+    image: enterprise-risk-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-runtime
+    environment:
+      ENTERPRISE_RISK_PORT: 8092
+      ENTERPRISE_RISK_DB_URL: jdbc:h2:file:/var/lib/enterprise-risk/data/enterprise-risk;MODE=MySQL;DATABASE_TO_LOWER=TRUE;AUTO_SERVER=TRUE
+      ENTERPRISE_RISK_DB_USERNAME: sa
+      ENTERPRISE_RISK_DB_PASSWORD: ""
+      ENTERPRISE_RISK_TIANYANCHA_ENDPOINT: ${ENTERPRISE_RISK_TIANYANCHA_ENDPOINT:-https://mcp.tianyancha.com/mcp}
+      ENTERPRISE_RISK_KEY_ENCRYPTION_SECRET: ${ENTERPRISE_RISK_KEY_ENCRYPTION_SECRET:-change-me-in-production-key-secret-32}
+    volumes:
+      - enterprise-risk-data:/var/lib/enterprise-risk/data
+    ports:
+      - "8092:8092"
+    restart: unless-stopped
+
+  enterprise-risk-frontend:
+    image: enterprise-risk-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - enterprise-risk-backend
+    ports:
+      - "8093:80"
+    restart: unless-stopped
+
+volumes:
+  enterprise-risk-data:

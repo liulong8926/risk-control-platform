@@ -1,0 +1,1 @@
+ALTER TABLE er_wecom_robot_config ADD COLUMN risk_levels VARCHAR(120) NOT NULL DEFAULT 'CRITICAL,HIGH';
