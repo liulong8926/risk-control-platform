@@ -1,0 +1,55 @@
+name: enterprise-risk-prod
+
+services:
+  enterprise-risk-backend:
+    image: enterprise-risk-backend:${ENTERPRISE_RISK_IMAGE_TAG:?ENTERPRISE_RISK_IMAGE_TAG is required}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-runtime
+    environment:
+      ENTERPRISE_RISK_PORT: ${ENTERPRISE_RISK_PORT:-8092}
+      ENTERPRISE_RISK_DB_URL: ${ENTERPRISE_RISK_DB_URL:?ENTERPRISE_RISK_DB_URL is required}
+      ENTERPRISE_RISK_DB_USERNAME: ${ENTERPRISE_RISK_DB_USERNAME:?ENTERPRISE_RISK_DB_USERNAME is required}
+      ENTERPRISE_RISK_DB_PASSWORD: ${ENTERPRISE_RISK_DB_PASSWORD:?ENTERPRISE_RISK_DB_PASSWORD is required}
+      ENTERPRISE_RISK_FLYWAY_LOCATIONS: classpath:db/migration-mysql,classpath:db/mysqlmigration
+      ENTERPRISE_RISK_JWT_SECRET: ${ENTERPRISE_RISK_JWT_SECRET:?ENTERPRISE_RISK_JWT_SECRET is required}
+      ENTERPRISE_RISK_KEY_ENCRYPTION_SECRET: ${ENTERPRISE_RISK_KEY_ENCRYPTION_SECRET:?ENTERPRISE_RISK_KEY_ENCRYPTION_SECRET is required}
+      ENTERPRISE_RISK_BOOTSTRAP_ADMIN_PASSWORD: ${ENTERPRISE_RISK_BOOTSTRAP_ADMIN_PASSWORD:-}
+      ENTERPRISE_RISK_REQUIRE_BOOTSTRAP_ADMIN_PASSWORD: "true"
+      ENTERPRISE_RISK_TIANYANCHA_ENDPOINT: ${ENTERPRISE_RISK_TIANYANCHA_ENDPOINT:-https://mcp.tianyancha.com/mcp}
+      ENTERPRISE_RISK_TIANYANCHA_TIMEOUT_SECONDS: ${ENTERPRISE_RISK_TIANYANCHA_TIMEOUT_SECONDS:-30}
+      TZ: ${TZ:-Asia/Shanghai}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:-Asia/Shanghai}
+    restart: unless-stopped
+    expose:
+      - "8092"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.50"
+          memory: 512M
+
+  enterprise-risk-frontend:
+    image: enterprise-risk-frontend:${ENTERPRISE_RISK_IMAGE_TAG:?ENTERPRISE_RISK_IMAGE_TAG is required}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - enterprise-risk-backend
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "127.0.0.1:${ENTERPRISE_RISK_FRONTEND_BIND_PORT:-8093}:80"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 64M

@@ -37,3 +37,15 @@ npm run dev
 ./gradlew test
 cd frontend && npm run lint && npm run build
 ```
+
+## 生产部署
+
+正式环境建议使用 Linux + Docker Compose + 独立 MySQL 8，并通过宿主机 Nginx 提供 HTTPS 入口。
+
+- [项目与运维说明](docs/PROJECT-OPERATIONS.md)
+- [生产部署手册](docs/DEPLOYMENT.md)
+- [生产环境变量模板](.env.example)
+- [生产 Compose 配置](docker-compose.prod.yml)
+- [宿主机 Nginx 配置示例](deploy/nginx/enterprise-risk.conf)
+
+生产环境必须设置 `ENTERPRISE_RISK_BOOTSTRAP_ADMIN_PASSWORD`，空库首次启动创建 `admin` 后应立即改密。真实数据库密码、JWT/加密密钥、天眼查 Key 和企业微信 Webhook 不得提交 Git。

@@ -1,0 +1,2 @@
+ALTER TABLE er_account ADD COLUMN phone VARCHAR(32);
+ALTER TABLE er_account ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE;

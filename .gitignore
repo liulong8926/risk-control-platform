@@ -8,3 +8,6 @@ data/
 manual_render*/
 *.iml
 .idea/
+.env
+.env.*
+!.env.example

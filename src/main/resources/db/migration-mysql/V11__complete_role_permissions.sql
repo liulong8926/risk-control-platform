@@ -1,0 +1,14 @@
+INSERT INTO er_role_permission(role_id,permission_code)
+SELECT r.id,p.permission_code FROM er_role r CROSS JOIN (
+ SELECT 'MENU_RISK' permission_code UNION ALL SELECT 'MENU_MODEL' UNION ALL SELECT 'MENU_KEY' UNION ALL SELECT 'MENU_ROBOT' UNION ALL SELECT 'MENU_ACCOUNTS' UNION ALL SELECT 'MENU_ROLES'
+ UNION ALL SELECT 'RISK_VIEW' UNION ALL SELECT 'RISK_WRITE' UNION ALL SELECT 'MODEL_VIEW' UNION ALL SELECT 'MODEL_MANAGE' UNION ALL SELECT 'KEY_VIEW' UNION ALL SELECT 'KEY_MANAGE'
+ UNION ALL SELECT 'ROBOT_VIEW' UNION ALL SELECT 'ROBOT_MANAGE' UNION ALL SELECT 'ACCOUNT_MANAGE' UNION ALL SELECT 'ROLE_MANAGE'
+) p
+WHERE r.role_code='ADMIN' AND NOT EXISTS (SELECT 1 FROM er_role_permission x WHERE x.role_id=r.id AND x.permission_code=p.permission_code);
+INSERT INTO er_role_permission(role_id,permission_code)
+SELECT r.id,p.permission_code FROM er_role r CROSS JOIN (
+ SELECT 'MENU_RISK' permission_code UNION ALL SELECT 'MENU_MODEL' UNION ALL SELECT 'MENU_ROBOT' UNION ALL SELECT 'RISK_VIEW' UNION ALL SELECT 'RISK_WRITE' UNION ALL SELECT 'MODEL_VIEW' UNION ALL SELECT 'ROBOT_VIEW'
+) p
+WHERE r.role_code='OPERATIONS' AND NOT EXISTS (SELECT 1 FROM er_role_permission x WHERE x.role_id=r.id AND x.permission_code=p.permission_code);
+INSERT INTO er_role_permission(role_id,permission_code)
+SELECT r.id,'MENU_RISK' FROM er_role r WHERE r.role_code='VIEWER' AND NOT EXISTS (SELECT 1 FROM er_role_permission x WHERE x.role_id=r.id AND x.permission_code='MENU_RISK');

@@ -8,11 +8,13 @@ spring:
     password: ${ENTERPRISE_RISK_DB_PASSWORD:}
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: ${ENTERPRISE_RISK_FLYWAY_LOCATIONS:classpath:db/migration}
 management.endpoints.web.exposure.include: health,info
 enterprise-risk:
   jwt-secret: ${ENTERPRISE_RISK_JWT_SECRET:change-me-in-production-enterprise-risk-secret-32}
   key-encryption-secret: ${ENTERPRISE_RISK_KEY_ENCRYPTION_SECRET:change-me-in-production-key-secret-32}
+  bootstrap-admin-password: ${ENTERPRISE_RISK_BOOTSTRAP_ADMIN_PASSWORD:}
+  require-bootstrap-admin-password: ${ENTERPRISE_RISK_REQUIRE_BOOTSTRAP_ADMIN_PASSWORD:false}
   tianyancha:
     endpoint: ${ENTERPRISE_RISK_TIANYANCHA_ENDPOINT:https://mcp.tianyancha.com/mcp}
     timeout-seconds: ${ENTERPRISE_RISK_TIANYANCHA_TIMEOUT_SECONDS:30}

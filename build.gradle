@@ -15,6 +15,7 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-validation'
   implementation 'org.springframework.boot:spring-boot-starter-actuator'
   implementation 'org.flywaydb:flyway-core'
+  implementation 'org.flywaydb:flyway-mysql'
   implementation 'org.apache.poi:poi-ooxml:5.3.0'
   runtimeOnly 'com.h2database:h2'
   runtimeOnly 'com.mysql:mysql-connector-j'
@@ -29,6 +30,7 @@ tasks.named('test') {
   systemProperty 'spring.datasource.password', ''
   systemProperty 'enterprise-risk.jwt-secret', 'test-jwt-secret-012345678901234567890123'
   systemProperty 'enterprise-risk.key-encryption-secret', 'test-key-secret-012345678901234567890123'
+  systemProperty 'enterprise-risk.bootstrap-admin-password', 'test-bootstrap-admin-password'
   systemProperty 'enterprise-risk.tianyancha.endpoint', 'http://localhost:1'
   systemProperty 'enterprise-risk.tianyancha.timeout-seconds', '1'
 }
