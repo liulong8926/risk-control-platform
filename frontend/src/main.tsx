@@ -105,6 +105,18 @@ const batchStatusNames: Record<string, string> = {
   PARTIAL: "部分成功",
   FAILED: "采集失败",
 };
+const batchRiskStatusNames: Record<string, string> = {
+  NEW: "新增风险",
+  CONTINUING: "持续风险",
+  UPGRADED: "风险升级",
+  RESOLVED: "风险消除",
+};
+const batchRiskStatusColors: Record<string, string> = {
+  NEW: "red",
+  CONTINUING: "default",
+  UPGRADED: "volcano",
+  RESOLVED: "green",
+};
 const capabilityStatusNames: Record<string, string> = {
   SUCCEEDED: "采集成功",
   FAILED: "采集失败",
@@ -1271,6 +1283,8 @@ function BatchModal({
   }, [open, executing]);
   const cadenceDescription = (
     <div>
+      <div>批量采集仅获取风险总览及当前主体模型已启用的风险因素</div>
+      <div>企业主体信息、股权关系、招标、融资、信用评价等信息请通过单企业“补全采集”获取</div>
       <div>严重风险 / 高风险 / 中风险：每 7 天至少自动采集一次</div>
       <div>低风险 / 无风险：每 15 天至少自动采集一次</div>
       <div>数据不足：每 15 天进入补采或复核周期；首次未成功采集的企业立即进入待采集队列</div>
@@ -1279,6 +1293,8 @@ function BatchModal({
   );
   const automationRuleDescription = (
     <div>
+      <div>* 批量内容：风险总览 + 当前主体模型已启用的风险因素</div>
+      <div>* 其它信息：由操作人通过企业列表的“补全采集”执行全量采集</div>
       <div>* 定时执行：每日/每周任务固定23:00触发</div>
       <div>* 采集周期：严重/高/中风险企业每7天至少采集1次，低/无风险企业每15天至少采集1次</div>
       <div>* 异常续跑：当日额度耗尽后剩余企业自动顺延至下一个配置时段续跑；首次采集失败立即入待采队列，数据不足每15天进入补采复核</div>
@@ -1397,7 +1413,7 @@ function BatchModal({
                   <Descriptions.Item label="今日剩余配额">
                     {preview?.remainingQuota ?? "-"}
                   </Descriptions.Item>
-                  <Descriptions.Item label="今日预计完整采集">
+                  <Descriptions.Item label="今日预计批量采集">
                     {preview?.estimatedFullCapacity ?? "-"} 家
                   </Descriptions.Item>
                   <Descriptions.Item label="待执行总量">
@@ -1690,6 +1706,16 @@ function Risk({ user }: { user: User }) {
               options={enterpriseStatusOptions}
             />
           </Form.Item>
+          <Form.Item name="batchRiskStatus">
+            <Select
+              allowClear
+              placeholder="风险异动类型"
+              style={{ width: 140 }}
+              options={Object.entries(batchRiskStatusNames)
+                .filter(([value]) => value !== "RESOLVED")
+                .map(([value, label]) => ({ value, label }))}
+            />
+          </Form.Item>
           <Tooltip title={enterpriseStatusHelp} placement="topLeft">
             <QuestionCircleOutlined
               aria-label="采集状态说明"
@@ -1761,14 +1787,14 @@ function Risk({ user }: { user: User }) {
               ),
             },
             {
-              title: "风险等级",
-              render: (_: any, x: any) => <RiskLevelTag value={x.riskLevel} />,
-            },
-            {
               title: "采集状态",
               render: (_: any, x: any) => (
                 <CollectionStatusTag value={x.collectionStatus} />
               ),
+            },
+            {
+              title: "风险等级",
+              render: (_: any, x: any) => <RiskLevelTag value={x.riskLevel} />,
             },
             {
               title: "采集批次号",
@@ -1776,9 +1802,15 @@ function Risk({ user }: { user: User }) {
               render: (v: any) => v || "-",
             },
             {
+              title: "风险异动类型",
+              dataIndex: "batchRiskStatus",
+              render: (v: any) =>
+                v ? <Tag color={batchRiskStatusColors[v]}>{batchRiskStatusNames[v] || v}</Tag> : "-",
+            },
+            {
               title: "最近成功时间",
               dataIndex: "latestSuccessAt",
-              render: fmt,
+              render: (v: any, x: any) => fmt(x.batchCollectedAt || v),
             },
             {
               title: "操作",
@@ -1796,7 +1828,11 @@ function Risk({ user }: { user: User }) {
                     }
                     onClick={() => scan(x.id)}
                   >
-                    {scanning.includes(x.id) ? "采集中" : "采集"}
+                    {scanning.includes(x.id)
+                      ? "采集中"
+                      : x.collectionStatus && x.collectionStatus !== "UNSCANNED"
+                        ? "补全采集"
+                        : "采集"}
                   </Button>
                   <Button
                     style={{ width: 56 }}
@@ -2095,10 +2131,11 @@ function Robot({ user }: { user: User }) {
         <Card size="small" title="消息模板预览" style={{ marginBottom: 16, background: "#fafafa" }}>
           <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{`企业风控采集完成
 批次号：ER202608280002
-风险企业：3 家
-${selectedLevels.map((x: string) => `${levelNames[x] || x}：${x === "CRITICAL" ? 1 : 2} 家`).join("\n")}
+需跟进风险企业：3 家
+新增风险：2 家【严重风险：1家、高风险：1家】
+风险升级：1 家【高风险：1家】
 销售经理分布：张三 2 家，李四 1 家`}</pre>
-          <div style={{ color: "#888", marginTop: 8 }}>实际发送时会替换为真实批次号、风险数量和销售经理统计；测试消息不代表真实采集批次通知。</div>
+          <div style={{ color: "#888", marginTop: 8 }}>仅本批新增风险和风险升级企业会进入提醒；持续风险不会重复发送。实际发送时会替换为真实批次号、风险数量和销售经理统计；测试消息不代表真实采集批次通知。</div>
         </Card>
         <Form.Item name="webhook" label="Webhook 地址">
           <Input

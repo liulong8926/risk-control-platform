@@ -22,10 +22,11 @@ public class RiskExportController {
       @RequestParam(required=false) String batchNo,
       @RequestParam(required=false) String riskLevel,
       @RequestParam(required=false) String collectionStatus,
+      @RequestParam(required=false) String batchRiskStatus,
       @RequestParam(required=false) String latestSuccessStart,
       @RequestParam(required=false) String latestSuccessEnd) {
     byte[] data = risk.exportCsv(companyName, unifiedCreditCode, salesManager, batchNo,
-        riskLevel, collectionStatus, latestSuccessStart, latestSuccessEnd);
+        riskLevel, collectionStatus, batchRiskStatus, latestSuccessStart, latestSuccessEnd);
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=enterprise-risk-export.csv")
         .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))

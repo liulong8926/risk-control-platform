@@ -39,6 +39,21 @@ class RiskServiceTest {
     assertDoesNotThrow(() -> risk.saveModel("ENTERPRISE", configuration));
   }
 
+  @Test void batchCapabilitiesIncludeOverviewAndOnlyEnabledModelFactors() {
+    var original = db.queryForList("select factor_code,enabled from er_risk_model_factor where model_type='ENTERPRISE'");
+    try {
+      db.update("update er_risk_model_factor set enabled=false where model_type='ENTERPRISE'");
+      db.update("update er_risk_model_factor set enabled=true where model_type='ENTERPRISE' and factor_code='DISHONEST'");
+      assertEquals(List.of("RISK_OVERVIEW", "DISHONEST"), risk.batchCapabilities("ENTERPRISE"));
+      assertEquals(List.of("RISK_OVERVIEW"), risk.batchCapabilities("UNCONFIGURED"));
+    } finally {
+      for (var row : original) {
+        db.update("update er_risk_model_factor set enabled=? where model_type='ENTERPRISE' and factor_code=?",
+            row.get("ENABLED"), row.get("FACTOR_CODE"));
+      }
+    }
+  }
+
   @Test void removalMigrationPurgesLegacyDataAndRecalculatesRiskLevel() throws Exception {
     String code = "91310000TEST000001";
     long profileId = ((Number) risk.upsert(code, "迁移测试企业", "ENTERPRISE", true, "TEST", "tester").get("id")).longValue();
@@ -102,6 +117,14 @@ class RiskServiceTest {
 
   @Test void completeWithoutHitsRemainsNoRisk() {
     assertEquals("NONE", RiskService.riskDisplay(new int[]{0, 0, 0, 0}, false, false));
+  }
+
+  @Test void batchRiskStatusClassifiesNewContinuingUpgradeAndResolution() {
+    assertEquals("NEW", RiskService.batchRiskStatus("NONE", "LOW*1"));
+    assertEquals("CONTINUING", RiskService.batchRiskStatus("HIGH*1", "MEDIUM*2"));
+    assertEquals("UPGRADED", RiskService.batchRiskStatus("MEDIUM*1", "HIGH*1"));
+    assertEquals("RESOLVED", RiskService.batchRiskStatus("HIGH*1", "NONE"));
+    assertTrue(RiskService.riskRank("CRITICAL*2") > RiskService.riskRank("HIGH*9"));
   }
 
   @Test void weeklyScheduleOnlyRunsOnConfiguredDayAt2300() {
