@@ -1573,6 +1573,10 @@ function Risk({ user }: { user: User }) {
     [editing, setEditing] = useState<any>(),
     [importOpen, setImportOpen] = useState(false),
     [batchOpen, setBatchOpen] = useState(false),
+    [initializing, setInitializing] = useState(false),
+    [initializationOpen, setInitializationOpen] = useState(false),
+    [initializationPreview, setInitializationPreview] = useState<any>(),
+    [initializationConfirmation, setInitializationConfirmation] = useState(""),
     [detail, setDetail] = useState<any>(),
     [scanning, setScanning] = useState<number[]>([]),
     [exporting, setExporting] = useState(false),
@@ -1650,6 +1654,19 @@ function Risk({ user }: { user: User }) {
         }
       },
     });
+  const initializeCustomers = async () => {
+    setInitializing(true);
+    try {
+      const preview = (await api.get("/risk-management/organization-risk/initialization-preview")).data;
+      setInitializationPreview(preview);
+      setInitializationConfirmation("");
+      setInitializationOpen(true);
+    } catch (e: any) {
+      message.error(e.response?.data?.message || "无法加载初始化信息");
+    } finally {
+      setInitializing(false);
+    }
+  };
   return (
     <>
       <Card
@@ -1657,6 +1674,7 @@ function Risk({ user }: { user: User }) {
         extra={
           <Space>
             <Button loading={exporting} onClick={exportCurrent}>导出当前结果</Button>
+            {user.role === "ADMIN" && <Button danger loading={initializing} onClick={initializeCustomers}>客户初始化</Button>}
             {write(user) && (
               <>
                 <Button type="primary" onClick={() => setOpen(true)}>
@@ -1866,6 +1884,49 @@ function Risk({ user }: { user: User }) {
         close={() => setOpen(false)}
         done={() => load()}
       />
+      <Modal
+        title="客户初始化"
+        width={560}
+        open={initializationOpen}
+        okText="确认初始化"
+        cancelText="取消"
+        confirmLoading={initializing}
+        okButtonProps={{ danger: true, disabled: initializationConfirmation !== "确认初始化" }}
+        onCancel={() => { if (!initializing) setInitializationOpen(false); }}
+        onOk={async () => {
+          setInitializing(true);
+          try {
+            const result = (await api.post("/risk-management/organization-risk/initialize", { confirmation: initializationConfirmation })).data;
+            setRows([]);
+            f.resetFields();
+            setInitializationOpen(false);
+            message.success(`客户初始化完成，已删除 ${result.enterpriseCount || 0} 家企业`);
+            setImportOpen(true);
+          } catch (e: any) {
+            message.error(e.response?.data?.message || "客户初始化失败");
+          } finally {
+            setInitializing(false);
+          }
+        }}
+      >
+        <Alert
+          type="error"
+          showIcon
+          message="此操作不可恢复"
+          description="将永久删除全部企业档案及其采集、风险数据，历史采集批次和机器人通知日志会保留。"
+          style={{ marginBottom: 16 }}
+        />
+        <Descriptions size="small" column={2} bordered>
+          <Descriptions.Item label="企业档案">{initializationPreview?.enterpriseCount || 0}</Descriptions.Item>
+          <Descriptions.Item label="采集任务">{initializationPreview?.collectionAttemptCount || 0}</Descriptions.Item>
+          <Descriptions.Item label="采集结果">{initializationPreview?.capabilityResultCount || 0}</Descriptions.Item>
+          <Descriptions.Item label="风险评分">{initializationPreview?.riskScoreCount || 0}</Descriptions.Item>
+          <Descriptions.Item label="风险异动">{initializationPreview?.batchRiskChangeCount || 0}</Descriptions.Item>
+          <Descriptions.Item label="风险事件/工单">{Number(initializationPreview?.riskEventCount || 0) + Number(initializationPreview?.workOrderCount || 0)}</Descriptions.Item>
+        </Descriptions>
+        <div style={{ marginTop: 16, marginBottom: 8 }}>请输入“确认初始化”以继续：</div>
+        <Input value={initializationConfirmation} disabled={initializing} onChange={(event) => setInitializationConfirmation(event.target.value)} />
+      </Modal>
       <IdentityModal
         item={editing}
         user={user}
@@ -2128,14 +2189,23 @@ function Robot({ user }: { user: User }) {
             ].map(([value, label]) => ({ value, label }))}
           />
         </Form.Item>
-        <Card size="small" title="消息模板预览" style={{ marginBottom: 16, background: "#fafafa" }}>
-          <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{`企业风控采集完成
+        <Card size="small" title="消息模板预览" style={{ marginBottom: 16, background: "#f5f5f5" }}>
+          <div style={{ color: "#8c8c8c", fontSize: 12, marginBottom: 8 }}>企业微信群内实际发送效果</div>
+          <div style={{ display: "inline-block", maxWidth: 620, padding: "12px 16px", background: "#fff", borderRadius: 4, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+            <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit", lineHeight: 1.7 }}>{`企业风控采集完成
 批次号：ER202608280002
 需跟进风险企业：3 家
 新增风险：2 家【严重风险：1家、高风险：1家】
 风险升级：1 家【高风险：1家】
-销售经理分布：张三 2 家，李四 1 家`}</pre>
-          <div style={{ color: "#888", marginTop: 8 }}>仅本批新增风险和风险升级企业会进入提醒；持续风险不会重复发送。实际发送时会替换为真实批次号、风险数量和销售经理统计；测试消息不代表真实采集批次通知。</div>
+
+机构客户（按销售经理）
+【陈金霞｜2家】
+- 上海示例供应链有限公司
+- 苏州示例智能科技有限公司
+【张三｜1家】
+- 杭州示例企业管理有限公司`}</pre>
+          </div>
+          <div style={{ color: "#888", marginTop: 10 }}>“-”后为实际机构客户名称。仅本批新增风险和风险升级企业会进入提醒；持续风险不会重复发送。名单过长时将按风险优先级截断并提示未展示数量。</div>
         </Card>
         <Form.Item name="webhook" label="Webhook 地址">
           <Input

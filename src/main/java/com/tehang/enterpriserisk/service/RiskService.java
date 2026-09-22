@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tehang.enterpriserisk.api.RiskController.Factor; import java.time.*; import java.util.*; import org.springframework.jdbc.core.JdbcTemplate; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
 @Service public class RiskService {
   @Transactional public Map<String,Object> updateIdentity(long id,String name,String code,String type){return updateIdentity(id,name,code,type,db.queryForObject("select sales_manager from er_enterprise_profile where id=?",String.class,id));}
-  public static final List<String> CAPS=List.of("COMPANY_REGISTRATION","EQUITY_TREE","RISK_OVERVIEW","DISHONEST","JUDGMENT_DEBTOR","JUDICIAL_CASE","CASE_FILING","SHELL_COMPANY","BIDDING","FINANCING","CREDIT_EVALUATION"); static final Set<String> FACTORS=Set.of("DISHONEST","JUDGMENT_DEBTOR","JUDICIAL_CASE","CASE_FILING","SHELL_COMPANY"); private final JdbcTemplate db;private final KeyService keys;private final TianyanchaClient client;public RiskService(JdbcTemplate d,KeyService k,TianyanchaClient c){db=d;keys=k;client=c;}
+  public static final List<String> CAPS=List.of("COMPANY_REGISTRATION","EQUITY_TREE","RISK_OVERVIEW","DISHONEST","JUDGMENT_DEBTOR","JUDICIAL_CASE","CASE_FILING","SHELL_COMPANY","BIDDING","FINANCING","CREDIT_EVALUATION"); static final Set<String> FACTORS=Set.of("DISHONEST","JUDGMENT_DEBTOR","JUDICIAL_CASE","CASE_FILING","SHELL_COMPANY"); private final JdbcTemplate db;private final KeyService keys;private final TianyanchaClient client;private final RiskMaintenanceLock maintenanceLock;public RiskService(JdbcTemplate d,KeyService k,TianyanchaClient c,RiskMaintenanceLock l){db=d;keys=k;client=c;maintenanceLock=l;}
   /** Batch collection is intentionally limited to risk data. Risk overview is always included,
    * followed by the enabled factors for the enterprise's subject model. */
   public List<String> batchCapabilities(String subjectType){
@@ -50,6 +50,9 @@ Map<String,Object> score=db.queryForObject("select evidence_json evidenceJson fr
   @Transactional public Map<String,Object> scan(long id,Long runId){return scanQueued(id,runId,CAPS);}
   @Transactional public Map<String,Object> scanQueued(long id,Long runId){return scanQueued(id,runId,CAPS);}
   @Transactional public Map<String,Object> scanQueued(long id,Long runId,Collection<String> requestedCapabilities){
+    return maintenanceLock.withCollection(()->scanQueuedLocked(id,runId,requestedCapabilities));
+  }
+  private Map<String,Object> scanQueuedLocked(long id,Long runId,Collection<String> requestedCapabilities){
     List<String> target=new ArrayList<>(new LinkedHashSet<>(requestedCapabilities));
     if(target.isEmpty())throw new IllegalArgumentException("没有可采集的风险信息");
     Map<String,Object> p;
